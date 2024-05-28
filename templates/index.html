@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Answer Evaluation</title>
+    <style>
+        /* Loader CSS */
+        .loader {
+            border: 16px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 16px solid #3498db;
+            width: 120px;
+            height: 120px;
+            animation: spin 2s linear infinite;
+            display: none;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>Answer Evaluation</h1>
+    <form id="evaluation-form">
+        <label for="question">Question:</label><br>
+        <input type="text" id="question" name="question" required><br><br>
+        <label for="answer">Answer:</label><br>
+        <textarea id="answer" name="answer" required></textarea><br><br>
+        <button type="submit">Evaluate</button>
+    </form>
+
+    <div id="loader" class="loader"></div>
+    <div id="evaluation-result"></div>
+    <div id="pdf-download" style="display:none;">
+        <a id="pdf-link" href="#" download>Download PDF Report</a>
+    </div>
+
+    <script>
+        document.getElementById('evaluation-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = {
+                question: formData.get('question'),
+                answer: formData.get('answer')
+            };
+
+            // Show the loader
+            document.getElementById('loader').style.display = 'block';
+
+            fetch('/evaluate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                const { final_score, grade, breakdown, sentiment, pdf_file } = result;
+                const sentimentInterpretation = sentiment === -1 ? 'strong negative' : sentiment === 0 ? 'neutral' : 'strong positive';
+                document.getElementById('evaluation-result').innerHTML = `
+                    <h2>Evaluation Result</h2>
+                    <p>Final Score: ${final_score.toFixed(2)}</p>
+                    <p>Grade: ${grade}</p>
+                    <h3>Breakdown:</h3>
+                    <ul>
+                        ${Object.entries(breakdown).map(([criterion, score]) => `<li>${criterion}: ${score.toFixed(2)}</li>`).join('')}
+                    </ul>
+                    <p>Sentiment: ${sentiment.toFixed(2)} (${sentimentInterpretation})</p>
+                `;
+                document.getElementById('pdf-link').href = `/${pdf_file}`;
+                document.getElementById('pdf-download').style.display = 'block';
+                // Hide the loader
+                document.getElementById('loader').style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Hide the loader in case of error
+                document.getElementById('loader').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
